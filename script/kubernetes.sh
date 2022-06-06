@@ -1,6 +1,7 @@
 #!/bin/bash
 
 function install_prerequirements() {
+    swapoff -a
     sudo apt-get install ebtables ethtool
     sudo apt-get update -y
     #Install docker
