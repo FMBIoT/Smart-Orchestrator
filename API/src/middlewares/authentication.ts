@@ -1,8 +1,7 @@
 import { Container } from 'typedi';
-import mongoose from 'mongoose';
 import { Logger } from 'winston';
+import config from '../config'
 import OsmService from '../services/auxiliar/osmService';
-import ResponseFormatJob from '../jobs/responseFormat';
 
 const tokenValidation = async (req, res, next) => {
   const Logger : Logger = Container.get('logger');
@@ -11,10 +10,14 @@ const tokenValidation = async (req, res, next) => {
     const responseOsmService = await osmServiceInstance.IsAuth(req.header('Token'))
     if (responseOsmService.status == 401) {
       return res.status(responseOsmService.status).send(responseOsmService.data);
+    }else{
+      if(responseOsmService.status == 500){
+        return res.status(responseOsmService.status).send(responseOsmService.data);
+      }
     }
     return next();
   } catch (e) {
-    Logger.error('🔥 Error with connection: %o', e);
+    Logger.error('🔥 Error: %o', e);
     return next(e);
   }
 };

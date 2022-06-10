@@ -10,9 +10,11 @@ export default class MongoService {
   constructor(
     @Inject('logger') private logger,
     @Inject('clusterModel') private clusterModel: Models.ClusterModel,
+    @Inject('enablerModel') private enablerModel: Models.EnablerModel,
 
   ) {}
 
+  // Cluster DB
   public async PostClusterDb(uid,vim,credentials){
     let server = credentials.clusters[0].cluster.server
     const configData = dump(credentials)
@@ -36,5 +38,37 @@ export default class MongoService {
     }
     return clusterDBfind.vim
   }
+
+  // Enabler DB
+
+  public async PostEnablerDb(name,vnf,nsd,nsInstance,vim,cluster,helmChart){
+    const enablerRecord = await this.enablerModel.create({name,vnf,nsd,nsInstance,vim,cluster,helmChart});
+    if (!enablerRecord) {
+        throw new Error('Enabler cannot be created');
+    }
+  }
+
+  public async GetEnablerByCluster(cluster){
+    const enablerRecord = await this.enablerModel.find({cluster});
+    const data = {enablerRecord}
+    return new ResponseFormatJob().handler(data)
+
+  }
+
+  public async FindEnablerById(id){
+    const enablerRecord = await this.enablerModel.findOne({"nsInstance":id})
+    if (!enablerRecord){
+      return {status:404, detail: 'The enabler does no exist in DB'}
+    }
+    return enablerRecord
+  }
+
+  public async DeleteEnablerDb(uid){
+    const enablerRecord = await this.enablerModel.findByIdAndDelete(uid)
+    if (!enablerRecord){
+      throw new Error('Enabler cannot be find');
+    }
+  }
+
  
 }

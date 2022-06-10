@@ -8,6 +8,7 @@ const EnablerSchema = new mongoose.Schema(
     nsd: String,
     nsInstance: String,
     vim: String,
+    cluster: String,
     helmChart: String
   }
 );

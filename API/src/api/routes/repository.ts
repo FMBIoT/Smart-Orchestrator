@@ -8,14 +8,14 @@ const route = Router();
 export default (app: Router) => {
     app.use('/chartrepo', route);
     const logger:Logger = Container.get('logger');
+    const repoServiceInstance = Container.get(RepositoryService);
 
     // Get repository
     route.get(
       '/', 
       async (req: Request, res: Response, next: NextFunction) => {
-        logger.info('Calling get Repo endpoint');
+        logger.info('📓 Calling GET Repo endpoint');
         try {
-          const repoServiceInstance = Container.get(RepositoryService);
           const serviceResponse = await repoServiceInstance.GetRepository(req.header('Token'))
           return res.status(serviceResponse.status).json(serviceResponse.data);
         } catch (e) {
@@ -29,9 +29,8 @@ export default (app: Router) => {
     route.get(
       '/:id',
       async (req: Request, res: Response, next: NextFunction) => {
-        logger.info('Calling get Repo endpoint by id %o',req.params.id );
+        logger.info('📓 Calling GET Repo endpoint by id %o',req.params.id );
         try {
-          const repoServiceInstance = Container.get(RepositoryService);
           const serviceResponse = await repoServiceInstance.GetRepositoryById(req.params.id,req.header('Token'));
           return res.status(serviceResponse.status).json(serviceResponse.data);
         } catch (e) {
@@ -45,10 +44,9 @@ export default (app: Router) => {
     route.post(
       '/', 
       async (req: Request, res: Response, next: NextFunction) => {
-        logger.info('Calling post Repo endpoint  %o', req.body  );
+        logger.info('📓 Calling POST Repo endpoint  %o', req.body  );
         const {name,description,url} = req.body
         try {
-          const repoServiceInstance = Container.get(RepositoryService);
           const serviceResponse = await repoServiceInstance.PostRepository({name,description,"type":"helm-chart",url},req.header('Token'));
           return res.status(serviceResponse.status).json(serviceResponse.data);
         } catch (e) {
@@ -62,9 +60,8 @@ export default (app: Router) => {
     route.delete(
       '/:id',
       async (req: Request, res: Response, next: NextFunction) => {
-        logger.info('Calling delete Repo endpoint by id %o',req.params.id);
+        logger.info('📓 Calling DELETE Repo endpoint by id %o',req.params.id);
         try {
-          const repoServiceInstance = Container.get(RepositoryService);
           const serviceResponse = await repoServiceInstance.DeleteRepository(req.params.id,req.header('Token'));
           return res.status(serviceResponse.status).json(serviceResponse.data);
         } catch (e) {

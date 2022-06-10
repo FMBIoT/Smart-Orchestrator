@@ -10,10 +10,11 @@ export default (app: Router) => {
   app.use('/login', route);
   const logger:Logger = Container.get('logger');
 
+  // Authenticate
   route.post(
     '/tokens',
     async (req: Request, res: Response, next: NextFunction) => {
-      logger.info('Calling tokens endpoint with body: %o', req.body );
+      logger.info('🔑 Calling tokens endpoint with body: %o', req.body );
       try {
         const authServiceInstance = Container.get(AuthService);
         const serviceResponse = await authServiceInstance.SignUp(req.body);

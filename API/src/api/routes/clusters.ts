@@ -9,17 +9,23 @@ import middlewares from '../../middlewares';
 
 const route = Router();
 
+/**
+  * @TODO Check errors of await.
+*/
 export default (app: Router) => {
     app.use('/k8sclusters', route);
     const logger:Logger = Container.get('logger');
+    const clusterServiceInstance = Container.get(ClusterService);
+    const osmServiceInstance = Container.get(OsmService);
+    const mongoServiceInstance = Container.get(MongoService);
 
+    // Get Cluster
     route.get(
       '/',
       middlewares.tokenValidation,
       async (req: Request, res: Response, next: NextFunction) => {
-        logger.info('Calling get Clusters endpoint');
+        logger.info('🌌 Calling GET Clusters endpoint');
         try {
-          const clusterServiceInstance = Container.get(ClusterService);
           const serviceClusterResponse = await clusterServiceInstance.GetClusters(req.header('Token'))
           return res.status(serviceClusterResponse.status).json(serviceClusterResponse.data);
         } catch (e) {
@@ -29,23 +35,21 @@ export default (app: Router) => {
       }
     );
 
+    // Post Cluster
     route.post(
       '/',
-      middlewares.tokenValidation,
+      [middlewares.tokenValidation,middlewares.dbConnectionValidation],
       async (req: Request, res: Response, next: NextFunction) => {
-        logger.info('Calling post Clusters endpoint');
+        logger.info('🌌 Calling POST Clusters endpoint');
         let {name,description,credentials,vim_account,k8s_version} = req.body
         try {
-          const osmServiceInstance = Container.get(OsmService);
           const osmResponse = await osmServiceInstance.PostVim(req.header('Token'))
           vim_account = osmResponse.data.id
 
-          const clusterServiceInstance = Container.get(ClusterService);
           const serviceClusterResponse = await clusterServiceInstance.PostClusters({name, description, credentials,vim_account,k8s_version,"nets":{"net1":"vim-net"}},req.header('Token'));
 
           if(serviceClusterResponse.status == 200){
             new PrometheusJob().WriteTargets(credentials)
-            const mongoServiceInstance = Container.get(MongoService);
             await mongoServiceInstance.PostClusterDb(serviceClusterResponse.data.id,vim_account,credentials)
             return res.status(serviceClusterResponse.status).json(serviceClusterResponse.data);
           }else{
@@ -60,21 +64,19 @@ export default (app: Router) => {
       }
     );
     
+    // Delete Cluster
     route.delete(
       '/:id',
-      middlewares.tokenValidation,
+      [middlewares.tokenValidation,middlewares.dbConnectionValidation],
       async (req: Request, res: Response, next: NextFunction) => {
-        logger.info('Calling delete Cluster endpoint by id %o',req.params.id);
+        logger.info('🌌 Calling DELETE Cluster endpoint by id %o',req.params.id);
         try {
-          const clusterServiceInstance = Container.get(ClusterService);
           const serviceClusterResponse = await clusterServiceInstance.DeleteCluster(req.params.id,req.header('Token'));
           
           if(serviceClusterResponse.status == 200){
             new PrometheusJob().DeleteTargets(req.params.id)
-            const mongoServiceInstance = Container.get(MongoService);
             const vim_account = await mongoServiceInstance.FindClusterById(req.params.id)
 
-            const osmServiceInstance = Container.get(OsmService);
             await osmServiceInstance.DeleteVim(vim_account,req.header('Token'))
             await mongoServiceInstance.DeleteClusterDb(req.params.id)
             return res.status(serviceClusterResponse.status).json(serviceClusterResponse.data);

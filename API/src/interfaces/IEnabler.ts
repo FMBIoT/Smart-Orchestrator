@@ -4,6 +4,7 @@ export interface IEnabler {
     nsd: string;
     nsInstance: string;
     vim: string;
+    cluster: string;
     helmChart: string;
   }
   

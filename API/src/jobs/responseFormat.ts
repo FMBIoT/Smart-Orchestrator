@@ -5,7 +5,7 @@ export default class ResponseFormatJob {
   public async handler(response): Promise<JSON> {
     const Logger: Logger = Container.get('logger');
     try {
-      Logger.debug('✌️ Response formatter Job triggered!');
+      // Logger.debug('✌️ Response formatter Job triggered!');
       if ('status' in response){
         return {status:response.status, data:response}
       }else{

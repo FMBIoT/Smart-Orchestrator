@@ -1,37 +1,91 @@
 import { Router, Request, Response, NextFunction } from 'express';
-// import { Container } from 'typedi';
-import Logger from '../../loaders/logger';
-
-// import { Logger } from 'winston';
+import { Container } from 'typedi';
+import { Logger } from 'winston';
+import EnablerService from '../../services/enabler';
+import middlewares from '../../middlewares';
+import MongoService from '../../services/auxiliar/mongoService';
 
 const route = Router();
 
 export default (app: Router) => {
     app.use('/enabler', route);
+    const logger:Logger = Container.get('logger');
+    const enablerServiceInstance = Container.get(EnablerService);
+    const mongoServiceInstance = Container.get(MongoService);
 
     route.get(
       '/instanced', 
+      middlewares.tokenValidation,
       async (req: Request, res: Response, next: NextFunction) => {
-        res.json({'ok':'hola'})
-       }
+        logger.info('💡 Calling GET Enablers instanced endpoint');
+        try {
+          const serviceEnablerResponse = await enablerServiceInstance.GetEnablerInstanced(req.header('Token'))
+          return res.status(serviceEnablerResponse.status).json(serviceEnablerResponse.data);
+        } catch (e) {
+          logger.error('🔥 error: %o', e);
+          return next(e);
+        }
+      }
     );
+
+    route.get(
+      '/enabler_cluster/:id', 
+      [middlewares.tokenValidation,middlewares.dbConnectionValidation],
+      async (req: Request, res: Response, next: NextFunction) => {
+        logger.info('💡 Calling GET Enabler by cluster endpoint');
+        try {
+          const serviceMongoResponse = await mongoServiceInstance.GetEnablerByCluster(req.params.id)
+          return res.status(serviceMongoResponse.status).json(serviceMongoResponse.data);
+        } catch (e) {
+          logger.error('🔥 error: %o', e);
+          return next(e);
+        }
+      }
+    );
+
     route.post(
       '/', 
+      middlewares.tokenValidation,
       async (req: Request, res: Response, next: NextFunction) => {
-        res.json({'ok':'hola'})
+        logger.info('💡 Calling POST Enabler endpoint');
+        try {
+          const serviceEnablerResponse = await enablerServiceInstance.PostEnabler(req.body,req.header('Token'))
+          return res.status(serviceEnablerResponse.status).json(serviceEnablerResponse.data);
+        } catch (e) {
+          logger.error('🔥 error: %o', e);
+          return next(e);
+        }
       }
     );
+
     route.post(
       '/:id/terminate',
+      middlewares.tokenValidation,
       async (req: Request, res: Response, next: NextFunction) => {
-        res.json({'ok':'hola'})
+        logger.info('💡 Calling Terminate Enabler endpoint');
+        try {
+          const serviceEnablerResponse = await enablerServiceInstance.TerminateEnabler(req.params.id,req.header('Token'))
+          return res.status(serviceEnablerResponse.status).json(serviceEnablerResponse.data);
+        } catch (e) {
+          logger.error('🔥 error: %o', e);
+          return next(e);
+        }
       }
-    )
+    );
+
     route.delete(
         '/:id',
+        [middlewares.tokenValidation,middlewares.dbConnectionValidation],
         async (req: Request, res: Response, next: NextFunction) => {
-        res.json({'ok':'hola'})
+          logger.info('💡 Calling Terminate Enabler endpoint');
+          try {
+            const serviceEnablerResponse = await enablerServiceInstance.DeleteEnabler(req.params.id,req.header('Token'))
+            return res.status(serviceEnablerResponse.status).json(serviceEnablerResponse.data);
+          } catch (e) {
+            logger.error('🔥 error: %o', e);
+            return next(e);
+          }
         }
-    )
+    );
 
 }
