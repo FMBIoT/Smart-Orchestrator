@@ -1,11 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
-import ClusterService from '../../services/clusters';
 import { Logger } from 'winston';
 import PrometheusJob from '../../jobs/prometheusJob';
 import OsmService from '../../services/auxiliar/osmService';
 import MongoService from '../../services/auxiliar/mongoService';
 import middlewares from '../../middlewares';
+import ClusterService from '../../services/clusters';
 
 const route = Router();
 
@@ -38,7 +38,11 @@ export default (app: Router) => {
     // Post Cluster
     route.post(
       '/',
-      [middlewares.tokenValidation,middlewares.dbConnectionValidation],
+      // [middlewares.tokenValidation,
+      // middlewares.dbConnectionValidation,
+      // middlewares.validationCluster],
+      [middlewares.dbConnectionValidation,
+      middlewares.validationCluster],
       async (req: Request, res: Response, next: NextFunction) => {
         logger.info('🌌 Calling POST Clusters endpoint');
         let {name,description,credentials,vim_account,k8s_version} = req.body

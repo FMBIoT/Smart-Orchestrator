@@ -32,7 +32,8 @@ export default {
   osm:{
     host:`https://${process.env.OSM_HOST}:${process.env.OSM_PORT}`,
   },
-  targetsProm: process.env.PATH_TARGETS_PROM
+  targetsProm: process.env.PATH_TARGETS_PROM,
+  schedulerImage: process.env.SCHEDULER_IMAGE
   /**
    * Mailgun email credentials
    */

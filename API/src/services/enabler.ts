@@ -4,6 +4,8 @@ import axios from 'axios'
 import ResponseFormatJob from '../jobs/responseFormat';
 import OsmService from './auxiliar/osmService';
 import MongoService from './auxiliar/mongoService';
+import AutoService from './auxiliar/autoService';
+import KubeService from './auxiliar/kubeService';
 
 
 const osmUri = `${config.osm.host}/osm/`;
@@ -13,7 +15,10 @@ export default class EnablerService {
   constructor(
     @Inject('logger') private logger,
     public osmService: OsmService,
-    public mongoService: MongoService
+    public mongoService: MongoService,
+    public autoService: AutoService,
+    public kubeService: KubeService
+
   ) {}
 
   public async GetEnablerInstanced(token){
@@ -50,20 +55,27 @@ export default class EnablerService {
     let {enablerName, helmChart, additionalParams, vim, auto, placementPolicy} = postData
 
     try {
-      
-      let cluster = await this.osmService.GetClusterByVim(token,vim)
-      if (cluster.status != 200){ return cluster }
-      let vnf = await this.osmService.PostVnf(token,enablerName,helmChart)
-      if (vnf.status != 200){ return vnf }
-      let nsd = await this.osmService.PostNsd(token,enablerName)
-      if (nsd.status != 200){ return nsd }
-      let nsInstance = await this.osmService.PostNsInstance(token,nsd.data.id,enablerName,additionalParams,vim)
-      if (nsInstance.status != 200){ return nsInstance }
+      if (auto == true){
+        let values = await this.autoService.GetEnablerValues(helmChart,token)
+        if(values.status != 200){return values}
 
-      await this.mongoService.PostEnablerDb(enablerName,vnf.data.id,nsd.data.id,nsInstance.data.id,vim,cluster.data.data,helmChart)
-      nsInstance.data.cluster = cluster.data.data
+        let metrics = await this.autoService.GetTotalMetrics(values.data, placementPolicy)
+        let job = await this.kubeService.EphemeralJob(metrics)
       
-      return nsInstance
+      }
+      // let cluster = await this.osmService.GetClusterByVim(token,vim)
+      // if (cluster.status != 200){ return cluster }
+      // let vnf = await this.osmService.PostVnf(token,enablerName,helmChart)
+      // if (vnf.status != 200){ return vnf }
+      // let nsd = await this.osmService.PostNsd(token,enablerName)
+      // if (nsd.status != 200){ return nsd }
+      // let nsInstance = await this.osmService.PostNsInstance(token,nsd.data.id,enablerName,additionalParams,vim)
+      // if (nsInstance.status != 200){ return nsInstance }
+
+      // await this.mongoService.PostEnablerDb(enablerName,vnf.data.id,nsd.data.id,nsInstance.data.id,vim,cluster.data.data,helmChart)
+      // nsInstance.data.cluster = cluster.data.data
+      
+      // return values
     } catch (e) {
       this.logger.error(e);
       throw e;

@@ -4,6 +4,7 @@ import { Logger } from 'winston';
 import EnablerService from '../../services/enabler';
 import middlewares from '../../middlewares';
 import MongoService from '../../services/auxiliar/mongoService';
+import AutoService from '../../services/auxiliar/autoService';
 
 const route = Router();
 
@@ -12,6 +13,7 @@ export default (app: Router) => {
     const logger:Logger = Container.get('logger');
     const enablerServiceInstance = Container.get(EnablerService);
     const mongoServiceInstance = Container.get(MongoService);
+    const autoServiceInstance = Container.get(AutoService);
 
     route.get(
       '/instanced', 
