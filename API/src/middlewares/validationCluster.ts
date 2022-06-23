@@ -10,7 +10,7 @@ const validationCluster = async (req, res, next) => {
     Logger.info('💊 Middleware validation Cluster fired')
     const schemas = { 
         clusterPOST: Joi.object().keys({ 
-            name: Joi.string().required(),
+            name: Joi.string().valid(req.body.credentials.contexts[0].name).required(),
             description: Joi.string().required(),
             credentials: Joi.object().keys({
                 apiVersion: Joi.string().required(),

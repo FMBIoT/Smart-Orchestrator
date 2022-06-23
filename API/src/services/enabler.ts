@@ -55,31 +55,38 @@ export default class EnablerService {
     let {enablerName, helmChart, additionalParams, vim, auto, placementPolicy} = postData
 
     try {
-      if (auto == true){
-        let values = await this.autoService.GetEnablerValues(helmChart,token)
-        if(values.status != 200){return values}
+      let cluster = await this.osmService.GetClusterByVim(token,vim)
+      if (cluster.status != 200){ return cluster }
+      let vnf = await this.osmService.PostVnf(token,enablerName,helmChart)
+      if (vnf.status != 200){ return vnf }
+      let nsd = await this.osmService.PostNsd(token,enablerName)
+      if (nsd.status != 200){ return nsd }
+      let nsInstance = await this.osmService.PostNsInstance(token,nsd.data.id,enablerName,additionalParams,vim)
+      if (nsInstance.status != 200){ return nsInstance }
 
-        let metrics = await this.autoService.GetTotalMetrics(values.data, placementPolicy)
-        let job = await this.kubeService.EphemeralJob(metrics)
+      await this.mongoService.PostEnablerDb(enablerName,vnf.data.id,nsd.data.id,nsInstance.data.id,vim,cluster.data.data,helmChart)
+      nsInstance.data.cluster = cluster.data.data
       
-      }
-      // let cluster = await this.osmService.GetClusterByVim(token,vim)
-      // if (cluster.status != 200){ return cluster }
-      // let vnf = await this.osmService.PostVnf(token,enablerName,helmChart)
-      // if (vnf.status != 200){ return vnf }
-      // let nsd = await this.osmService.PostNsd(token,enablerName)
-      // if (nsd.status != 200){ return nsd }
-      // let nsInstance = await this.osmService.PostNsInstance(token,nsd.data.id,enablerName,additionalParams,vim)
-      // if (nsInstance.status != 200){ return nsInstance }
-
-      // await this.mongoService.PostEnablerDb(enablerName,vnf.data.id,nsd.data.id,nsInstance.data.id,vim,cluster.data.data,helmChart)
-      // nsInstance.data.cluster = cluster.data.data
-      
-      // return values
+      return nsInstance
     } catch (e) {
       this.logger.error(e);
-      throw e;
+      // throw e;
     }
+  }
+
+  public async AutoPostEnabler(postData,token){
+    let values = await this.autoService.GetEnablerValues(postData.helmChart,token)
+    if(values.status != 200){return values}
+
+    let metrics = await this.autoService.GetTotalMetrics(values.data, postData.placementPolicy)
+    let job = await this.kubeService.EphemeralJob(metrics)
+    if(job.status != 200){return job}
+    
+    let jobLog = JSON.parse(job.data.log.replace("\n","").replace(/'/g, '"'))
+    if(jobLog.length > 1){ return(new ResponseFormatJob().handler({"status":400, "msg":"The enabler has too many replicas, can not be deployed"})) }
+    
+    let vim = await this.osmService.GetK8sClustersVim(token,jobLog[0]["name"])
+    return vim
   }
 
   public async TerminateEnabler(id,token){

@@ -7,9 +7,8 @@ import json
 
 # Make sure image is provided
 fogapp_data = os.getenv("DATA")
-#fogapp_data=json.loads(fogapp_data)
-fogapp_data = {'cpu':['1000m','1'],'memory':['1024Mi','2Gi'],'replicas':1, 'placement_policy':'most_traffic'}
-# export DATA='{"cpu":["1000m","1"],"memory":["1024Mi","2Gi"],"replicas":1,"placement_policy":"best-fit"}'
+fogapp_data = json.loads(fogapp_data)
+
 fogapp_replicas=fogapp_data['replicas']
 fogapp_placement_policy=fogapp_data['placement_policy']
 

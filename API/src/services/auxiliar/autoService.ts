@@ -28,7 +28,7 @@ export default class AutoService {
         if (repositories.status != 200){ return repositories }
 
         const repoExist = repositories.data.filter(x => x.name === repository);
-        if (!repoExist.length){return { status:404, msg: "Repo does not exist" }} 
+        if (!repoExist.length){return new ResponseFormatJob().handler({ status:404, msg: "Repo does not exist" })} 
 
         const index = await this.GetIndex(repoExist[0].url,enabler)
         if(typeof index === 'object'){return index}
@@ -60,13 +60,13 @@ export default class AutoService {
         if( enablerName[0] in index ){
           if(enabler.includes(':')){
             let enablerObject = index[enablerName[0]].filter(ob => ob.version === enablerName[1])
-            enablerObject = !enablerObject.length ? {status:404, detail: 'Version does not exists'} : enablerObject[0].urls[0]
+            enablerObject = !enablerObject.length ? new ResponseFormatJob().handler({status:404, detail: 'Version does not exists'}) : enablerObject[0].urls[0]
             return enablerObject
           }else{
             return index[enabler][0].urls[0]
           }
         }else{
-          return {status:404, detail: 'Enabler does not exists'}
+          return new ResponseFormatJob().handler({status:404, detail: 'Enabler does not exists'})
         }
        
 
@@ -119,7 +119,7 @@ export default class AutoService {
           normalizedData.cpu.push(ob.resources.requests.cpu)
           normalizedData.memory.push(ob.resources.requests.memory)}
         else{
-            normalizedData.cpu.push('250m'), normalizedData.memory.push('1028Mi')
+            normalizedData.cpu.push('100m'), normalizedData.memory.push('1028Mi')
         }
       })
       

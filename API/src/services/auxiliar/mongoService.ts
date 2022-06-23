@@ -39,6 +39,14 @@ export default class MongoService {
     return clusterDBfind.vim
   }
 
+  public async GetAllClusters(){
+    const clusterDBfind = await this.clusterModel.find({})
+    if (!clusterDBfind){
+      throw new Error('Cluster cannot be find');
+    }
+    return clusterDBfind
+  }
+
   // Enabler DB
 
   public async PostEnablerDb(name,vnf,nsd,nsInstance,vim,cluster,helmChart){

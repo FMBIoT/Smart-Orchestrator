@@ -51,6 +51,11 @@ export default (app: Router) => {
       async (req: Request, res: Response, next: NextFunction) => {
         logger.info('💡 Calling POST Enabler endpoint');
         try {
+          if (req.body.auto == true){
+            const vim = await enablerServiceInstance.AutoPostEnabler(req.body,req.header('Token'))
+            if(vim.status != 200){ return res.status(vim.status).json(vim.data)}
+            req.body.vim = vim.data.data
+          }
           const serviceEnablerResponse = await enablerServiceInstance.PostEnabler(req.body,req.header('Token'))
           return res.status(serviceEnablerResponse.status).json(serviceEnablerResponse.data);
         } catch (e) {

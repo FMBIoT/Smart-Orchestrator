@@ -28,18 +28,42 @@ export default class OsmService {
       );
 
       data = data.filter(ob => ob.vim_account == vim)[0].name
-        
       return new ResponseFormatJob().handler({data});
     } catch (error) {
       if (axios.isAxiosError(error)) {
         this.logger.error('🔥 error: %o', error.response.data.detail);
         return new ResponseFormatJob().handler(error)
       } else {
-        console.log('unexpected error: ', error);
+        return new ResponseFormatJob().handler({status:500,detail:'No VIM match'})
       }
     }
   }
  
+  public async GetK8sClustersVim(token,cluster) {
+
+    try {
+      let {data}  = await axios.get<JSON>(
+        `${osmUri}admin/v1/k8sclusters/`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+        },
+      );
+      data = data.find(x => x.name === cluster).vim_account
+      return new ResponseFormatJob().handler({data});
+    }catch(err){
+      if (axios.isAxiosError(err)) {
+        this.logger.error('🔥 error: %o', err.response.data.detail);
+        return new ResponseFormatJob().handler(err)
+      } else {
+        return new ResponseFormatJob().handler({status:500,detail:'No VIM match'})
+      }
+    }
+  }
+
   public async PostVim(token){
     let vimName = uuidv4();
 
