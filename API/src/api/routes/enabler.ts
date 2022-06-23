@@ -47,7 +47,7 @@ export default (app: Router) => {
 
     route.post(
       '/', 
-      middlewares.tokenValidation,
+      [middlewares.tokenValidation,middlewares.dbConnectionValidation],
       async (req: Request, res: Response, next: NextFunction) => {
         logger.info('💡 Calling POST Enabler endpoint');
         try {
