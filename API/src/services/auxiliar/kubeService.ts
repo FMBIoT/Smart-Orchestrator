@@ -66,6 +66,7 @@ kc.loadFromDefault();
 
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
 const batchV1Api = kc.makeApiClient(k8s.BatchV1Api);
+const coreV1Api = kc.makeApiClient(k8s.CoreV1Api);
 
 @Service()
 export default class KubeService {
@@ -76,105 +77,128 @@ export default class KubeService {
 
   // Job functions
 
-    public async EphemeralJob (fogapp_data){
-      let jobName = 'auto-'+ uuidv4();
-      let kubeconfig = await this.MergeKubeConfig()
-      fogapp_data = JSON.stringify(fogapp_data)
-      const job = {
-        "apiVersion": "batch/v1",
-        "kind": "Job",
-        "metadata": {
-          "name": `${jobName}`
-        },
-        "spec": {
-          "template": {
-            "spec": {
-              "containers": [
-                {
-                  "name": "auto",
-                  "image": `${config.schedulerImage}`,
-                  "imagePullPolicy": "IfNotPresent",
-                  "env": [
-                    {
-                      "name": "DATA",
-                      "value": `${fogapp_data}`
-                    },
-                    {
-                      "name": "KUBECONFIG",
-                      "value":`${kubeconfig}`
-                    }
-                  ],
-                  "resources": {
-                    "requests": {
-                      "cpu": "100m",
-                      "memory": "1024Mi"
-                    }
+  public async EphemeralJob (fogapp_data){
+    let jobName = 'auto-'+ uuidv4();
+    let kubeconfig = await this.MergeKubeConfig()
+    fogapp_data = JSON.stringify(fogapp_data)
+    const job = {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "name": `${jobName}`
+      },
+      "spec": {
+        "template": {
+          "spec": {
+            "containers": [
+              {
+                "name": "auto",
+                "image": `${config.schedulerImage}`,
+                "imagePullPolicy": "IfNotPresent",
+                "env": [
+                  {
+                    "name": "DATA",
+                    "value": `${fogapp_data}`
+                  },
+                  {
+                    "name": "KUBECONFIG",
+                    "value":`${kubeconfig}`
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "100m",
+                    "memory": "1024Mi"
                   }
                 }
-              ],
-              "restartPolicy": "Never"
-            }
-          },
-          "backoffLimit": 1
-        }
-      }
-      try{
-        let log = await this.CreateAndReadLogJob(job,jobName)
-        await this.DeleteJobAndPods(jobName)
-        return new ResponseFormatJob().handler(log)
-      }catch(e){
-        this.logger.error(e)
+              }
+            ],
+            "restartPolicy": "Never"
+          }
+        },
+        "backoffLimit": 1
       }
     }
+    try{
+      let log = await this.CreateAndReadLogJob(job,jobName)
+      await this.DeleteJobAndPods(jobName)
+      return new ResponseFormatJob().handler(log)
+    }catch(e){
+      this.logger.error(e)
+    }
+  }
 
-    public async CreateAndReadLogJob(job,jobName){
-      const watch = new k8s.Watch(kc);
-      return new Promise(function (resolve, reject) {
-        batchV1Api.createNamespacedJob('scheduler', job )
-        .then(async(res)=>{
-          watch.watch('/api/v1/namespaces/scheduler/pods',{ allowWatchBookmarks: true },
-          async(type, apiObj, watchObj) =>{
-            if (type === 'MODIFIED' && watchObj.object.metadata.generateName.startsWith(jobName)) {
-              if(watchObj.object.status.phase == 'Succeeded'){
-                const pod = watchObj.object.metadata.name
-                k8sApi.readNamespacedPodLog(pod,'scheduler').then(async(res) => { resolve({log:res.body}) }).catch((err) => {reject({status:400,detail:err})})
-              }
-              if(watchObj.object.status.phase == 'Failed'){
-                const pod = watchObj.object.metadata.name
-                k8sApi.readNamespacedPodLog(pod,'scheduler').then((res)=>{ resolve({status:400,log:res.body})}).catch((err)=>{reject({status:400,detail:err})})
-              }
+  public async CreateAndReadLogJob(job,jobName){
+    const watch = new k8s.Watch(kc);
+    return new Promise(function (resolve, reject) {
+      batchV1Api.createNamespacedJob('scheduler', job )
+      .then(async(res)=>{
+        watch.watch('/api/v1/namespaces/scheduler/pods',{ allowWatchBookmarks: true },
+        async(type, apiObj, watchObj) =>{
+          if (type === 'MODIFIED' && watchObj.object.metadata.generateName.startsWith(jobName)) {
+            if(watchObj.object.status.phase == 'Succeeded'){
+              const pod = watchObj.object.metadata.name
+              k8sApi.readNamespacedPodLog(pod,'scheduler').then(async(res) => { resolve({log:res.body}) }).catch((err) => {reject({status:400,detail:err})})
             }
-          },(err) => { reject({status:400,detail:err})})
-        }).catch(async function(err){ reject({status:400,detail:err}) });
+            if(watchObj.object.status.phase == 'Failed'){
+              const pod = watchObj.object.metadata.name
+              k8sApi.readNamespacedPodLog(pod,'scheduler').then((res)=>{ resolve({status:400,log:res.body})}).catch((err)=>{reject({status:400,detail:err})})
+            }
+          }
+        },(err) => { reject({status:400,detail:err})})
+      }).catch(async function(err){ reject({status:400,detail:err}) });
+    });
+  }
+
+  public async DeleteJobAndPods(jobName){
+    batchV1Api.deleteNamespacedJob(jobName,'scheduler').then((res)=>{
+      k8sApi.deleteCollectionNamespacedPod('scheduler').then((res)=>{}).catch((err)=>{this.logger.error('☸️ Error deleting pods in namespace scheduler',err)})
+    }).catch((err)=>this.logger.error('☸️ Error deleting job in namespace scheduler',err))
+  }
+
+  public async MergeKubeConfig(){
+    let file = {
+      'apiVersion':'v1',
+      'clusters':[],
+      'contexts':[],
+      'current-context':'',
+      'kind': 'Config',
+      'preferences': {},
+      'users':[]
+    }
+    const findAllCluster = await this.mongoService.GetAllClusters()
+    findAllCluster.forEach(function(config){
+      let kubeconfig = JSON.parse(JSON.stringify(load(config.config),2,null))
+      file.clusters.push(kubeconfig.clusters[0])
+      file.contexts.push(kubeconfig.contexts[0])
+      file.users.push(kubeconfig.users[0])
+    })
+    file['current-context']= file.contexts.filter(ob => ob.name === 'cloud' ) ? 'cloud' : file.contexts[0].name
+    file = JSON.stringify(file)
+    return file
+  }
+
+  // PV and PVC
+
+  public async GetPvcList(enablerName){
+    return new Promise(function (resolve, reject) {
+      coreV1Api.listNamespacedPersistentVolumeClaim('default')
+      .then(async(res) => { 
+        const pvcObject = res.response.body.items.filter(ob => ob.metadata.labels.hasOwnProperty('app.kubernetes.io/instance') && ob.metadata.labels['app.kubernetes.io/instance'].includes(enablerName))
+        if(!pvcObject.length){return resolve({status:400,detail:'No PVC with that name'})}
+        const pvcName = pvcObject[0].metadata.name
+        const pvName= pvcObject[0].spec.volumeName
+        resolve([pvcName,pvName])})
+      .catch(async(err) => { 
+        reject(err) })
       });
-    }
+  }
 
-    public async DeleteJobAndPods(jobName){
-      batchV1Api.deleteNamespacedJob(jobName,'scheduler').then((res)=>{
-        k8sApi.deleteCollectionNamespacedPod('scheduler').then((res)=>{}).catch((err)=>{this.logger.error('☸️ Error deleting pods in namespace scheduler',err)})
-      }).catch((err)=>this.logger.error('☸️ Error deleting job in namespace scheduler',err))
-    }
-
-    public async MergeKubeConfig(){
-      let file = {
-        'apiVersion':'v1',
-        'clusters':[],
-        'contexts':[],
-        'current-context':'',
-        'kind': 'Config',
-        'preferences': {},
-        'users':[]
-      }
-      const findAllCluster = await this.mongoService.GetAllClusters()
-      findAllCluster.forEach(function(config){
-        let kubeconfig = JSON.parse(JSON.stringify(load(config.config),2,null))
-        file.clusters.push(kubeconfig.clusters[0])
-        file.contexts.push(kubeconfig.contexts[0])
-        file.users.push(kubeconfig.users[0])
-      })
-      file['current-context']= file.contexts.filter(ob => ob.name === 'cloud' ) ? 'cloud' : file.contexts[0].name
-      file = JSON.stringify(file)
-      return file
-    }
-
+  public async DeletePvAndPvc(names){
+    coreV1Api.deleteNamespacedPersistentVolumeClaim(names[0],'default')
+    .then(async(res) => {
+      coreV1Api.deletePersistentVolume(names[1]).then((res)=>{return {status:200, detail: 'Delete PV and PVC'}}).catch((err)=>{this.logger.error('☸️ Error deleting persistent volume',err)})
+     })
+    .catch(async(err) => {this.logger.error('☸️ Error deleting persistent volume claim',err) })
+  }
 }

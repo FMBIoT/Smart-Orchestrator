@@ -55,6 +55,8 @@ export default class EnablerService {
     let {enablerName, helmChart, additionalParams, vim, auto, placementPolicy} = postData
 
     try {
+      let values = await this.autoService.GetEnablerValues(postData.helmChart,token)
+      if(values.status != 200){return values}  
       let cluster = await this.osmService.GetClusterByVim(token,vim)
       if (cluster.status != 200){ return cluster }
       let vnf = await this.osmService.PostVnf(token,enablerName,helmChart)
@@ -139,5 +141,17 @@ export default class EnablerService {
       this.logger.error(e);
       throw e;
     }
+  }
+
+  public async DeletePVCandPV(id){
+    const enablerRecord = await this.mongoService.FindEnablerById(id)
+    if(enablerRecord.status == 404){return new ResponseFormatJob().handler(enablerRecord)}
+    
+    const enablerName = enablerRecord.helmChart.replace("/","-")
+    const pvNames = await this.kubeService.GetPvcList(enablerName)
+    if(pvNames.status == 400){return new ResponseFormatJob().handler(pvNames)}
+
+    const DeletePvAndPvc =  await this.kubeService.DeletePvAndPvc(pvNames)
+    return new ResponseFormatJob().handler(pvNames)
   }
 }
