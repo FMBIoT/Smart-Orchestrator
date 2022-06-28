@@ -56,7 +56,7 @@ function install_helm() {
 function install_k8s_storageclass() {
     echo "Installing open-iscsi"
     sudo apt-get update -y
-    sudo apt-get install open-iscsi
+    sudo apt-get install open-iscsi -y
     sudo systemctl enable --now iscsid
     OPENEBS_VERSION="3.1.0"
     echo "Installing OpenEBS"
