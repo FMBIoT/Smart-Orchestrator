@@ -144,14 +144,29 @@ export default class EnablerService {
   }
 
   public async DeletePVCandPV(id){
+    let contexts = []
+    let pvNames = {}
+    let DeletePvAndPvc = {}
+
     const enablerRecord = await this.mongoService.FindEnablerById(id)
     if(enablerRecord.status == 404){return new ResponseFormatJob().handler(enablerRecord)}
-    
     const enablerName = enablerRecord.helmChart.replace("/","-")
-    const pvNames = await this.kubeService.GetPvcList(enablerName)
-    if(pvNames.status == 400){return new ResponseFormatJob().handler(pvNames)}
 
-    const DeletePvAndPvc =  await this.kubeService.DeletePvAndPvc(pvNames)
-    return new ResponseFormatJob().handler(pvNames)
+    const kubeconfig = await this.kubeService.MergeKubeConfig()
+    kubeconfig.contexts.forEach(context => {contexts.push(context.name)});
+
+    for(const context of contexts){
+      let kube = await this.kubeService.CommuteCluster(kubeconfig,context)
+      pvNames = await this.kubeService.GetPvcList(enablerName,kube)
+
+      if(pvNames.status == 200){
+        for(let [index,pvc] of pvNames.data.pvcArray.entries()){
+          DeletePvAndPvc = await this.kubeService.DeletePvAndPvc(pvc,pvNames.data.pvArray[index],kube)
+        }
+      }
+    }
+    
+    return new ResponseFormatJob().handler(DeletePvAndPvc)
   }
+
 }
