@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import RepositoryService from '../../services/repository';
 import { Logger } from 'winston';
+import middlewares from '../../middlewares';
 
 const route = Router();
 
@@ -12,7 +13,8 @@ export default (app: Router) => {
 
     // Get repository
     route.get(
-      '/', 
+      '/',
+      middlewares.tokenValidation,
       async (req: Request, res: Response, next: NextFunction) => {
         logger.info('📓 Calling GET Repo endpoint');
         try {
@@ -28,6 +30,7 @@ export default (app: Router) => {
     // Get repository by id
     route.get(
       '/:id',
+      middlewares.tokenValidation,
       async (req: Request, res: Response, next: NextFunction) => {
         logger.info('📓 Calling GET Repo endpoint by id %o',req.params.id );
         try {
@@ -42,7 +45,8 @@ export default (app: Router) => {
 
     // Post repository
     route.post(
-      '/', 
+      '/',
+      middlewares.tokenValidation,
       async (req: Request, res: Response, next: NextFunction) => {
         logger.info('📓 Calling POST Repo endpoint  %o', req.body  );
         const {name,description,url} = req.body
@@ -59,6 +63,7 @@ export default (app: Router) => {
     // Delete repository
     route.delete(
       '/:id',
+      middlewares.tokenValidation,
       async (req: Request, res: Response, next: NextFunction) => {
         logger.info('📓 Calling DELETE Repo endpoint by id %o',req.params.id);
         try {
