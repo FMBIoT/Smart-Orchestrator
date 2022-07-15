@@ -1,0 +1,10 @@
+spec:
+  template:
+    spec:
+      hostAliases:
+      - ip: "192.168.250.134"
+        hostnames:
+        - cluster1.mesh.cilium.io
+      - ip: "192.168.250.242"
+        hostnames:
+        - cluster2.mesh.cilium.io
