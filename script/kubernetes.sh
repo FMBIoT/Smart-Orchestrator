@@ -165,7 +165,7 @@ else
     taint_master_node
     install_helm
     install_k8s_storageclass
-    install_cilium
+    # install_cilium
     install_prometheus
 fi
 
