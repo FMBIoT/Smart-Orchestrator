@@ -98,13 +98,17 @@ function install_prometheus(){
     helm install prometheus-community/kube-prometheus-stack --generate-name --set grafana.service.type=NodePort --set prometheus.service.type=NodePort --set prometheus.prometheusSpec.scrapeInterval="5s" --namespace monitoring
 }
 
-function install_cilium(){
-    curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz{,.sha256sum}
-    sha256sum --check cilium-linux-amd64.tar.gz.sha256sum
-    sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
-    rm cilium-linux-amd64.tar.gz{,.sha256sum}
-    cilium install
+function install_flannel() {
+    [ -z "${DEBUG_INSTALL}" ] || DEBUG beginning of function
+    CNI_DIR="$(mktemp -d -q --tmpdir "flannel.XXXXXX")"
+    trap 'rm -rf "${CNI_DIR}"' EXIT
+    wget --retry-on-host-error --retry-on-http-error 404,429,503 --tries=5 https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml -P $CNI_DIR
+    [ ! -f $CNI_DIR/kube-flannel.yml ] && FATAL "Cannot Install Flannel because $CNI_DIR/kube-flannel.yml was not found. Maybe the file https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml is temporarily not accessible"
+    kubectl apply -f $CNI_DIR
+    [ $? -ne 0 ] && FATAL "Cannot Install Flannel"
+    [ -z "${DEBUG_INSTALL}" ] || DEBUG end of function
 }
+
 
 function usage() {         
     echo                        # Function: Print a help message.
@@ -165,7 +169,7 @@ else
     taint_master_node
     install_helm
     install_k8s_storageclass
-    install_cilium
+    install_flannel
     install_prometheus
 fi
 

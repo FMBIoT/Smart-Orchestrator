@@ -1,1 +1,1 @@
-[{"targets":["192.168.250.176:30090"],"labels":{"cluster_name":"cloud"}},{"targets":["192.168.250.168:30090"],"labels":{"cluster_name":"edge"}},{"targets":["158.42.89.254:30090"],"labels":{"cluster_name":"edge2"}}]
+[{"targets":["192.168.250.134:30090"],"labels":{"cluster_name":"cloud"}},{"targets":["192.168.250.242:30090"],"labels":{"cluster_name":"edge"}}]

@@ -321,6 +321,8 @@ export default class OsmService {
 
   // NS Services
   public async PostNsInstance(token,nsdId,enablerName,additionalParams,vim){
+
+    const  k8snamespace = enablerName.includes('cilium') ? 'kube-system':'default'
     try{
 
       const {data}  = await axios.post<JSON>(
@@ -329,7 +331,7 @@ export default class OsmService {
           "nsName": enablerName, 
           nsdId,
           "vimAccountId":vim,
-          "k8s-namespace": 'default',
+          "k8s-namespace": k8snamespace,
           "additionalParamsForVnf": [{
             "member-vnf-index": enablerName, 
             "additionalParamsForKdu": [

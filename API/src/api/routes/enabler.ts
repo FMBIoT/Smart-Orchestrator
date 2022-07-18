@@ -66,6 +66,21 @@ export default (app: Router) => {
     );
 
     route.post(
+      '/cilium', 
+      [middlewares.tokenValidation,middlewares.dbConnectionValidation],
+      async (req: Request, res: Response, next: NextFunction) => {
+        logger.info('💡 Calling POST Cilium endpoint');
+        try {
+          const serviceEnablerResponse = await enablerServiceInstance.PostCNI(req.body.clusterName,req.body.vim,req.header('Token'))
+          return res.status(serviceEnablerResponse.status).json(serviceEnablerResponse.data);
+        } catch (e) {
+          logger.error('🔥 error: %o', e);
+          return next(e);
+        }
+      }
+    );
+
+    route.post(
       '/:id/terminate',
       middlewares.tokenValidation,
       async (req: Request, res: Response, next: NextFunction) => {
@@ -97,7 +112,7 @@ export default (app: Router) => {
 
     route.delete(
       '/pv/:id',
-      [middlewares.tokenValidation],
+      [middlewares.tokenValidation,middlewares.dbConnectionValidation],
       async (req: Request, res: Response, next: NextFunction) => {
         logger.info('💡 Calling Delete PV and PVC endpoint');
         try {

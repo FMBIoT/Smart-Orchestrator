@@ -38,10 +38,8 @@ export default (app: Router) => {
     // Post Cluster
     route.post(
       '/',
-      // [middlewares.tokenValidation,
-      // middlewares.dbConnectionValidation,
-      // middlewares.validationCluster],
-      [middlewares.dbConnectionValidation,
+      [middlewares.tokenValidation,
+      middlewares.dbConnectionValidation,
       middlewares.validationCluster],
       async (req: Request, res: Response, next: NextFunction) => {
         logger.info('🌌 Calling POST Clusters endpoint');

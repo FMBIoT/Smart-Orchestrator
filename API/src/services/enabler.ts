@@ -53,19 +53,23 @@ export default class EnablerService {
 
   public async PostEnabler(postData, token){
     let {enablerName, helmChart, additionalParams, vim, auto, placementPolicy} = postData
-
+    console.log(additionalParams)
     try {
-      let values = await this.autoService.GetEnablerValues(postData.helmChart,token)
-      if(values.status != 200){return values}  
-      let cluster = await this.osmService.GetClusterByVim(token,vim)
-      if (cluster.status != 200){ return cluster }
+      if(!enablerName.includes('cilium')){
+        let values = await this.autoService.GetEnablerValues(postData.helmChart,token)
+        if(values.status != 200){return values}  
+        let cluster = await this.osmService.GetClusterByVim(token,vim)
+        if (cluster.status != 200){ return cluster }
+      }
       let vnf = await this.osmService.PostVnf(token,enablerName,helmChart)
       if (vnf.status != 200){ return vnf }
       let nsd = await this.osmService.PostNsd(token,enablerName)
       if (nsd.status != 200){ return nsd }
       let nsInstance = await this.osmService.PostNsInstance(token,nsd.data.id,enablerName,additionalParams,vim)
       if (nsInstance.status != 200){ return nsInstance }
-
+      if (enablerName.includes('cilium')){
+        return nsInstance
+      }
       await this.mongoService.PostEnablerDb(enablerName,vnf.data.id,nsd.data.id,nsInstance.data.id,vim,cluster.data.data,helmChart)
       nsInstance.data.cluster = cluster.data.data
       
@@ -167,6 +171,23 @@ export default class EnablerService {
     }
     
     return new ResponseFormatJob().handler(DeletePvAndPvc)
+  }
+
+  public async PostCNI(clusterName,vim,token){
+    const postCilium = await this.PostEnabler({"enablerName":`cilium-${clusterName}`, "helmChart":"cilium/cilium:1.11.6", 
+    "additionalParams":{
+      "cluster": {
+        "name":clusterName,
+        "id": await this.mongoService.GetNumberClusters()
+      },
+      "operator": {
+        "replicas": 1
+      },
+      "clustermesh": {
+        "useAPIServer":true
+      }
+    },vim, "auto":"false"},token)
+    return postCilium
   }
 
 }
