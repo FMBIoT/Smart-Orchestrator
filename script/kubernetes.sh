@@ -168,7 +168,7 @@ else
     kube_config_dir
     taint_master_node
     install_helm
-    install_k8s_storageclass
+    install_k8s_storageclass 
     install_flannel
     install_prometheus
 fi
