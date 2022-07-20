@@ -5,6 +5,7 @@ import config from '../../config';
 import ResponseFormatJob from '../../jobs/responseFormat';
 import * as k8s from '@kubernetes/client-node';
 import {v4 as uuidv4} from 'uuid';
+import {load,dump} from 'js-yaml'
 
 const kc = new k8s.KubeConfig();
 kc.loadFromDefault();
@@ -165,4 +166,66 @@ export default class KubeService {
     return kube
   }
 
+  public async CreateSecretCiliumClustermesh(context,kube){
+    const coreV1Api = kube.makeApiClient(k8s.CoreV1Api);
+
+    const strEtcdConfig = 
+   `endpoints:
+- https://${context}.mesh.cilium.io:32379
+trusted-ca-file: '/var/lib/cilium/clustermesh/${context}-ca.crt'
+cert-file: '/var/lib/cilium/clustermesh/${context}.crt'
+key-file: '/var/lib/cilium/clustermesh/${context}.key'`
+
+    const etcdConfig = Buffer.from(strEtcdConfig, 'binary').toString('base64')
+    const caCrtResponse = await coreV1Api.readNamespacedSecret('clustermesh-apiserver-ca-cert','kube-system')
+    const caCrt = caCrtResponse.response.body.data['ca.crt']
+    const tlsResponse = await coreV1Api.readNamespacedSecret('clustermesh-apiserver-remote-cert','kube-system')
+    const tlsCrt = tlsResponse.response.body.data['tls.crt']
+    const tlsKey = tlsResponse.response.body.data['tls.key']
+
+    return{
+      "apiVersion": "v1",
+      "kind": "Secret",
+      "metadata": {
+          "name": "cilium-clustermesh"
+      },
+      "type": "Opaque",
+      "data": {
+        [context] : etcdConfig,
+        [`${context}-ca.crt`] : caCrt,
+        [`${context}.crt`] : tlsCrt,
+        [`${context}.key`] : tlsKey,
+      }
+    }
+  }
+
+  public async CreatePatch(kubeconfig,context){
+    const objectCluster = kubeconfig.clusters.filter(cluster => cluster.name == context)[0].cluster.server
+    const ip = objectCluster.split('/')[2].split(':')[0];
+    const patch = {
+      "hostAliases": [
+        {
+          "ip": ip,
+          "hostnames": [
+            `${context}.mesh.cilium.io`
+          ]
+        }
+      ]
+    }
+  return patch
+  }
+
+  public async instanciateClusterMesh(secrets,ds){
+    const k8sApi = kc.makeApiClient(k8s.AppsV1Api);
+    const patch = [
+      {
+          "op": "replace",
+          "path":"/spec/template/spec/",
+          "value": {"foo":"bar"}
+      }
+  ];
+    let patchDaemon = await k8sApi.patchNamespacedDaemonSet('cilium','kube-system',patch,undefined, undefined, undefined, undefined,{ headers: { 'content-type': k8s.PatchUtils.PATCH_FORMAT_JSON_PATCH } })
+    return patchDaemon
+  }
 }
+

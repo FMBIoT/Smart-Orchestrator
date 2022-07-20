@@ -125,4 +125,18 @@ export default (app: Router) => {
       }
     );
 
+    route.post(
+      '/connect/:id/',
+      // middlewares.tokenValidation,
+      async (req: Request, res: Response, next: NextFunction) => {
+        logger.info('💡 Calling Terminate Enabler endpoint');
+        try {
+          const serviceEnablerResponse = await enablerServiceInstance.ClustermeshConnect(req.params.id)
+          return res.status(serviceEnablerResponse.status).json(serviceEnablerResponse.data);
+        } catch (e) {
+          logger.error('🔥 error: %o', e);
+          return next(e);
+        }
+      }
+    );
 }

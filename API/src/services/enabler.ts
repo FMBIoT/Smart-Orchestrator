@@ -6,6 +6,7 @@ import OsmService from './auxiliar/osmService';
 import MongoService from './auxiliar/mongoService';
 import AutoService from './auxiliar/autoService';
 import KubeService from './auxiliar/kubeService';
+import { getSyntheticTrailingComments } from 'typescript';
 
 
 const osmUri = `${config.osm.host}/osm/`;
@@ -190,4 +191,21 @@ export default class EnablerService {
     return postCilium
   }
 
-}
+  public async ClustermeshConnect(cluster){
+    const kubeconfig = await this.kubeService.MergeKubeConfig()
+    let contexts = [ 'cloud', cluster]
+    // for(const context of contexts){
+    //   let kube = await this.kubeService.CommuteCluster(kubeconfig,context)
+    //   let secrets = await this.kubeService.CreateSecretCiliumClustermesh(context,kube)
+    //   let patch = await this.kubeService.CreatePatch(kubeconfig,context)
+    //   let contextConnect = context == 'cloud' ? cluster : 'cloud'
+    //   kube.setCurrentContext(contextConnect)
+    let connection = await this.kubeService.instanciateClusterMesh()
+    return new ResponseFormatJob().handler(connection) 
+      // patchDaemonSet
+      // createSecret
+      // deletePod
+    }
+  }
+
+// }
